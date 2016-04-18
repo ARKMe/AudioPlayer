@@ -1,8 +1,10 @@
 package bello.andrea.audioplayer;
 
 import android.app.Activity;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 
@@ -11,6 +13,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.Toast;
+
+import java.io.IOException;
 
 
 public class MainActivity extends Activity {
@@ -28,19 +32,32 @@ public class MainActivity extends Activity {
 
     private Handler myHandler = new Handler();
 
+    private Uri musicUri;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        musicUri = (Uri)getIntent().getExtras().getParcelable(getString(R.string.intent_key_uri));
 
         Button buttonBack =(Button)findViewById(R.id.button_back);
         final Button buttonPause = (Button) findViewById(R.id.button_pause);
         final Button buttonPlay =(Button)findViewById(R.id.button_play);
         Button buttonForth = (Button) findViewById(R.id.button_forth);
 
-        mediaPlayer = MediaPlayer.create(this, R.raw.song);
+        //mediaPlayer = MediaPlayer.create(this, R.raw.song);
 
-        seekbar=(SeekBar)findViewById(R.id.seekBar);
+        mediaPlayer = new MediaPlayer();
+        try {
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            mediaPlayer.setDataSource(getApplicationContext(), musicUri);
+            mediaPlayer.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        seekbar = (SeekBar)findViewById(R.id.seekBar);
         seekbar.setMax(mediaPlayer.getDuration());
         seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -71,7 +88,6 @@ public class MainActivity extends Activity {
 
                 currentPosition = mediaPlayer.getCurrentPosition();
 
-                seekbar.setProgress(currentPosition);
                 myHandler.postDelayed(UpdateSongTime, 100);
 
                 buttonPause.setEnabled(true);
