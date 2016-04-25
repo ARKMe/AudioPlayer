@@ -1,32 +1,26 @@
 package bello.andrea.audioplayer;
 
 import android.app.Activity;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 
+import android.os.IBinder;
 import android.view.View;
 
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.Toast;
 
-import java.io.IOException;
-
 
 public class MainActivity extends Activity {
 
-    private static final int FORWARD_TIME = 5000;
-    private static final int BACKWARD_TIME = 5000;
-
     private SeekBar seekbar;
-
-    private MediaPlayer mediaPlayer;
-
-    private int currentPosition;
 
     private Toast toast;
 
@@ -34,49 +28,69 @@ public class MainActivity extends Activity {
 
     private Uri musicUri;
 
+    PlayerService playerService;
+
+    private boolean mBound;
+    private ServiceConnection mConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            PlayerService.PlayerBinder binder = (PlayerService.PlayerBinder) service;
+            playerService = binder.getService();
+            playerService.prepare(musicUri);
+
+            seekbar.setMax(playerService.getDuration());
+            seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (progress >= seekBar.getMax()) {
+                        buttonPause.setEnabled(false);
+                        buttonPlay.setEnabled(true);
+                    }
+                    if (fromUser) {
+                        playerService.seekTo(progress);
+                    }
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+
+                }
+            });
+
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mBound = false;
+        }
+    };
+    private Button buttonPause;
+    private Button buttonPlay;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         musicUri = (Uri)getIntent().getExtras().getParcelable(getString(R.string.intent_key_uri));
+        seekbar = (SeekBar)findViewById(R.id.seekBar);
+
+        Intent intent = new Intent(this, PlayerService.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
 
         Button buttonBack =(Button)findViewById(R.id.button_back);
-        final Button buttonPause = (Button) findViewById(R.id.button_pause);
-        final Button buttonPlay =(Button)findViewById(R.id.button_play);
+        buttonPause = (Button) findViewById(R.id.button_pause);
+        buttonPlay =(Button)findViewById(R.id.button_play);
         Button buttonForth = (Button) findViewById(R.id.button_forth);
-
-        //mediaPlayer = MediaPlayer.create(this, R.raw.song);
-
-        mediaPlayer = new MediaPlayer();
-        try {
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mediaPlayer.setDataSource(getApplicationContext(), musicUri);
-            mediaPlayer.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        seekbar = (SeekBar)findViewById(R.id.seekBar);
-        seekbar.setMax(mediaPlayer.getDuration());
-        seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if(fromUser){
-                    mediaPlayer.seekTo(progress);
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
-            }
-        });
 
         buttonPause.setEnabled(false);
 
@@ -84,9 +98,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 showToast("Playing sound");
-                mediaPlayer.start();
-
-                currentPosition = mediaPlayer.getCurrentPosition();
+                playerService.start();
 
                 myHandler.postDelayed(UpdateSongTime, 100);
 
@@ -99,7 +111,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 showToast("Pausing sound");
-                mediaPlayer.pause();
+                playerService.pause();
 
                 buttonPause.setEnabled(false);
                 buttonPlay.setEnabled(true);
@@ -109,46 +121,34 @@ public class MainActivity extends Activity {
         buttonForth.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                int temp = currentPosition;
-
-                if ((temp + FORWARD_TIME) <= mediaPlayer.getDuration()) {
-                    currentPosition = currentPosition + FORWARD_TIME;
-                    mediaPlayer.seekTo(currentPosition);
-                    showToast("You have Jumped forward 5 seconds");
-                } else {
-                    showToast("Cannot jump forward 5 seconds");
-                }
+                playerService.goForward();
             }
         });
 
         buttonBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                int temp = currentPosition;
-
-                if ((temp - BACKWARD_TIME) >= 0) {
-                    currentPosition = currentPosition - BACKWARD_TIME;
-                    mediaPlayer.seekTo((int) currentPosition);
-                    showToast("You have Jumped backward 5 seconds");
-                } else {
-                    showToast("Cannot jump backward 5 seconds");
-                }
+                playerService.goBackward();
             }
         });
     }
 
     private Runnable UpdateSongTime = new Runnable() {
         public void run() {
-            currentPosition = mediaPlayer.getCurrentPosition();
-            seekbar.setProgress(currentPosition);
-            myHandler.postDelayed(this, 100);
+            seekbar.setProgress(playerService.getCurrentPosition());
+            if(playerService.isPlaying())
+                myHandler.postDelayed(this, 100);
         }
     };
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mediaPlayer.stop();
+        if (mBound) {
+            unbindService(mConnection);
+            mBound = false;
+        }
+        playerService.stop();
     }
 
     private void showToast(String message){

@@ -119,7 +119,7 @@ public class MusicSelectorActivity extends Activity {
             final MusicItem musicItem = musicItems.get(position);
             ((TextView)convertView.findViewById(R.id.author)).setText(musicItem.getAuthor());
             ((TextView)convertView.findViewById(R.id.title)).setText(musicItem.getTitle());
-            ((TextView)convertView.findViewById(R.id.duration)).setText(""+musicItem.getDuration());
+            ((TextView)convertView.findViewById(R.id.duration)).setText(""+musicItem.getDurationInMinutes());
             convertView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {

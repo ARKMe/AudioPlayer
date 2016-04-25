@@ -51,4 +51,9 @@ public class MusicItem {
     public Uri getURI() {
         return ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
     }
+
+    public String getDurationInMinutes(){
+        long secDuration = duration/1000;
+        return secDuration/60 + ":" + secDuration%60;
+    }
 }
