@@ -108,7 +108,7 @@ public class PlayerService extends Service {
         Toast.makeText(this, "service created", Toast.LENGTH_SHORT).show();
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        super.onDestroy();
+        super.onCreate();
     }
 
     @Override
