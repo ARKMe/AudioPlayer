@@ -125,6 +125,7 @@ public class MusicSelectorActivity extends Activity {
                 public void onClick(View v) {
                     Intent intent = new Intent(MusicSelectorActivity.this, MainActivity.class);
                     intent.putExtra(getString(R.string.intent_key_uri), musicItem.getURI());
+                    intent.putExtra(getString(R.string.intent_key_title), musicItem.getTitle());
                     startActivity(intent);
                 }
             });

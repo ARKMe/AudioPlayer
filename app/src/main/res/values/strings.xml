@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">AudioPlayer</string>
     <string name="intent_key_uri">bello.andrea.audioplayer.intent_key_uri</string>
+    <string name="intent_key_title">title_key</string>
 </resources>

@@ -38,9 +38,24 @@ public class MainActivity extends Activity {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             PlayerService.PlayerBinder binder = (PlayerService.PlayerBinder) service;
             playerService = binder.getService();
-            playerService.prepare(musicUri);
+
+            playerService.setForegroud(false);
+/*
+            if(!playerService.isActive()){
+                playerService.prepare(musicUri, title);
+            }
+*/
+            if(playerService.isPlaying()){
+                buttonPause.setEnabled(true);
+                buttonPlay.setEnabled(false);
+                myHandler.postDelayed(UpdateSongTime, 100);
+            } else {
+                buttonPause.setEnabled(false);
+                buttonPlay.setEnabled(true);
+            }
 
             seekbar.setMax(playerService.getDuration());
+            seekbar.setProgress(playerService.getCurrentPosition());
             seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 @Override
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -74,6 +89,7 @@ public class MainActivity extends Activity {
     };
     private Button buttonPause;
     private Button buttonPlay;
+    private String title;
 
 
     @Override
@@ -81,18 +97,21 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        title = getIntent().getExtras().getString(getString(R.string.intent_key_title));
         musicUri = (Uri)getIntent().getExtras().getParcelable(getString(R.string.intent_key_uri));
         seekbar = (SeekBar)findViewById(R.id.seekBar);
 
         Intent intent = new Intent(this, PlayerService.class);
+        intent.setAction(PlayerService.ACTION_PREPARE);
+        intent.putExtra(PlayerService.EXTRA_TITLE, title);
+        intent.putExtra(PlayerService.EXTRA_URI, musicUri);
+        startService(intent);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-
-        Button buttonBack =(Button)findViewById(R.id.button_back);
+        
+        Button buttonBack = (Button)findViewById(R.id.button_back);
         buttonPause = (Button) findViewById(R.id.button_pause);
         buttonPlay =(Button)findViewById(R.id.button_play);
         Button buttonForth = (Button) findViewById(R.id.button_forth);
-
-        buttonPause.setEnabled(false);
 
         buttonPlay.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -145,10 +164,10 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         if (mBound) {
+            playerService.setForegroud(true);
             unbindService(mConnection);
             mBound = false;
         }
-        playerService.stop();
     }
 
     private void showToast(String message){
